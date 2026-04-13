@@ -1,0 +1,11 @@
+<!DOCTYPE html>
+<html lang="en">
+    <body>
+     <!-- Add this script block BEFORE your widget -->
+     <script>
+       window.process = { env: { NODE_ENV: 'production' } };
+     </script>
+
+     <script src="http://localhost:3000/widget/widget.js" data-server="http://localhost:8000"></script>
+    </body>
+</html>

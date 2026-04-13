@@ -1,0 +1,70 @@
+app:
+  name: "Jarvis"
+  host: "0.0.0.0"
+  port: 8000
+  debug: false
+  cors_origins:
+    - "http://localhost:3000"
+    - "http://localhost:5173"
+
+auth:
+  enabled: false
+  jwt_secret_key: "change-me-in-production"
+  jwt_expiry_minutes: 1440
+  admin_username: "admin"
+  admin_password: "admin"
+
+llm:
+  provider: "ollama"
+  system_prompt: "You are Jarvis, a helpful AI assistant. Be concise, accurate, and helpful."
+  ollama:
+    model: "qwen2.5:3b"
+    base_url: "http://ollama:11434"
+    temperature: 0.7
+  openai:
+    model: "gpt-4o"
+    api_key: "${OPENAI_API_KEY}"
+    temperature: 0.7
+  anthropic:
+    model: "claude-sonnet-4-20250514"
+    api_key: "${ANTHROPIC_API_KEY}"
+    temperature: 0.7
+  bedrock:
+    model_id: "anthropic.claude-3-sonnet-20240229-v1:0"
+    region: "us-east-1"
+    temperature: 0.7
+
+rag:
+  enabled: true
+  store: "faiss"
+  embedding_model: "all-MiniLM-L6-v2"
+  chunk_size: 1000
+  chunk_overlap: 200
+  chromadb:
+    host: "chromadb"
+    port: 8000
+  faiss:
+    index_path: "./data/faiss_index"
+  opensearch:
+    host: "opensearch"
+    port: 9200
+  pgvector:
+    connection_string: "postgresql://jarvis:jarvis@postgres:5432/jarvis"
+
+voice:
+  enabled: true
+  stt_model: "distil-whisper"
+  tts_model: "piper"
+  piper:
+    model_path: "./models/jarvis-high.onnx"
+    config_path: "./models/en.json"
+
+tools:
+  enabled:
+    - web_search
+    - datetime_tool
+    - calculator
+    - rag_search
+
+database:
+  url: "sqlite:///./data/jarvis.db"

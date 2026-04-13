@@ -1,0 +1,107 @@
+version: "3.9"
+
+services:
+  backend:
+    build: ./backend
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    volumes:
+      - ./config:/app/config
+      - ./data:/app/data
+      - ./models:/app/models
+    environment:
+      - CONFIG_PATH=/app/config/config.yaml
+      - DATABASE_URL=${DATABASE_URL:-sqlite:///./data/jarvis.db}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID:-}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY:-}
+      - AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION:-us-east-1}
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY:-change-me-in-production}
+    networks:
+      - jarvis-net
+    restart: unless-stopped
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "${FRONTEND_PORT:-3000}:80"
+    environment:
+      - VITE_API_URL=http://localhost:${BACKEND_PORT:-8000}
+    depends_on:
+      - backend
+    networks:
+      - jarvis-net
+    restart: unless-stopped
+
+  # --- Vector Stores (activate via profiles) ---
+
+  chromadb:
+    image: chromadb/chroma:latest
+    profiles: ["chromadb"]
+    ports:
+      - "8100:8000"
+    volumes:
+      - chroma-data:/chroma/chroma
+    networks:
+      - jarvis-net
+    restart: unless-stopped
+
+  opensearch:
+    image: opensearchproject/opensearch:2
+    profiles: ["opensearch"]
+    environment:
+      - discovery.type=single-node
+      - DISABLE_SECURITY_PLUGIN=true
+    ports:
+      - "9200:9200"
+    volumes:
+      - opensearch-data:/usr/share/opensearch/data
+    networks:
+      - jarvis-net
+    restart: unless-stopped
+
+  postgres:
+    image: pgvector/pgvector:pg16
+    profiles: ["pgvector", "postgres"]
+    environment:
+      - POSTGRES_DB=jarvis
+      - POSTGRES_USER=jarvis
+      - POSTGRES_PASSWORD=${PG_PASSWORD:-jarvis}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pg-data:/var/lib/postgresql/data
+    networks:
+      - jarvis-net
+    restart: unless-stopped
+
+  # --- Optional Services ---
+
+  ollama:
+    image: ollama/ollama:latest
+    profiles: ["ollama"]
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama-data:/root/.ollama
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    networks:
+      - jarvis-net
+    restart: unless-stopped
+
+volumes:
+  chroma-data:
+  opensearch-data:
+  pg-data:
+  ollama-data:
+
+networks:
+  jarvis-net:
+    driver: bridge

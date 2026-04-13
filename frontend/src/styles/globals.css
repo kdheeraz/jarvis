@@ -1,0 +1,157 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    @apply antialiased;
+  }
+  body {
+    @apply text-surface-900 dark:text-surface-100;
+    background:
+      radial-gradient(60rem 60rem at 85% -10%, rgba(56, 189, 248, 0.35), transparent 60%),
+      radial-gradient(50rem 50rem at -10% 110%, rgba(168, 85, 247, 0.30), transparent 60%),
+      radial-gradient(40rem 40rem at 50% 50%, rgba(59, 130, 246, 0.18), transparent 70%),
+      linear-gradient(180deg, #f5f7fb 0%, #eef1f7 100%);
+    background-attachment: fixed;
+  }
+  .dark body {
+    background:
+      radial-gradient(60rem 60rem at 85% -10%, rgba(56, 189, 248, 0.22), transparent 60%),
+      radial-gradient(50rem 50rem at -10% 110%, rgba(168, 85, 247, 0.22), transparent 60%),
+      radial-gradient(40rem 40rem at 50% 50%, rgba(59, 130, 246, 0.14), transparent 70%),
+      linear-gradient(180deg, #0b1020 0%, #070b17 100%);
+    background-attachment: fixed;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-primary-600 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200;
+  }
+  .btn-primary:hover {
+    @apply bg-primary-700;
+  }
+  .btn-primary:disabled {
+    @apply opacity-50 cursor-not-allowed;
+  }
+
+  .btn-secondary {
+    @apply text-surface-900 dark:text-surface-100 font-medium py-2 px-4 rounded-xl transition-colors duration-200;
+    background: rgba(255, 255, 255, 0.5);
+    backdrop-filter: saturate(180%) blur(16px);
+    -webkit-backdrop-filter: saturate(180%) blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.55);
+  }
+  .btn-secondary:hover {
+    background: rgba(255, 255, 255, 0.7);
+  }
+  .dark .btn-secondary {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+  .dark .btn-secondary:hover {
+    background: rgba(255, 255, 255, 0.14);
+  }
+
+  .input-field {
+    @apply w-full px-4 py-2 rounded-xl transition-all duration-200;
+    background: rgba(255, 255, 255, 0.55);
+    backdrop-filter: saturate(180%) blur(16px);
+    -webkit-backdrop-filter: saturate(180%) blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.6);
+  }
+  .dark .input-field {
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+  .input-field:focus {
+    @apply outline-none ring-2 ring-primary-500/60;
+    border-color: transparent;
+  }
+
+  .card {
+    @apply rounded-2xl;
+    background: rgba(255, 255, 255, 0.55);
+    backdrop-filter: saturate(180%) blur(24px);
+    -webkit-backdrop-filter: saturate(180%) blur(24px);
+    border: 1px solid rgba(255, 255, 255, 0.6);
+    box-shadow:
+      0 1px 0 rgba(255, 255, 255, 0.7) inset,
+      0 8px 30px rgba(15, 23, 42, 0.08);
+  }
+  .dark .card {
+    background: rgba(17, 24, 39, 0.5);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow:
+      0 1px 0 rgba(255, 255, 255, 0.06) inset,
+      0 10px 40px rgba(0, 0, 0, 0.5);
+  }
+
+  /* iOS-style glass surfaces */
+  .glass {
+    background: rgba(255, 255, 255, 0.55);
+    backdrop-filter: saturate(180%) blur(24px);
+    -webkit-backdrop-filter: saturate(180%) blur(24px);
+    border: 1px solid rgba(255, 255, 255, 0.6);
+    box-shadow:
+      0 1px 0 rgba(255, 255, 255, 0.7) inset,
+      0 8px 30px rgba(15, 23, 42, 0.08);
+  }
+  .dark .glass {
+    background: rgba(17, 24, 39, 0.45);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow:
+      0 1px 0 rgba(255, 255, 255, 0.06) inset,
+      0 8px 30px rgba(0, 0, 0, 0.45);
+  }
+
+  .glass-strong {
+    background: rgba(255, 255, 255, 0.72);
+    backdrop-filter: saturate(180%) blur(28px);
+    -webkit-backdrop-filter: saturate(180%) blur(28px);
+    border: 1px solid rgba(255, 255, 255, 0.7);
+    box-shadow:
+      0 1px 0 rgba(255, 255, 255, 0.8) inset,
+      0 10px 40px rgba(15, 23, 42, 0.12);
+  }
+  .dark .glass-strong {
+    background: rgba(15, 23, 42, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow:
+      0 1px 0 rgba(255, 255, 255, 0.08) inset,
+      0 10px 40px rgba(0, 0, 0, 0.55);
+  }
+
+  .glass-subtle {
+    background: rgba(255, 255, 255, 0.35);
+    backdrop-filter: saturate(160%) blur(16px);
+    -webkit-backdrop-filter: saturate(160%) blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.45);
+  }
+  .dark .glass-subtle {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  border-radius: 9999px;
+}
+
+/* Typing animation */
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+.typing-cursor::after {
+  content: '|';
+  animation: blink 1s infinite;
+}

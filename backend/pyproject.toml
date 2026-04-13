@@ -1,0 +1,74 @@
+[project]
+name = "jarvis-backend"
+version = "0.1.0"
+description = "Jarvis AI Assistant Platform - Backend"
+requires-python = ">=3.11"
+dependencies = [
+    # Core
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.30.0",
+    "pydantic>=2.0.0",
+    "pydantic-settings>=2.0.0",
+    "pyyaml>=6.0",
+    "python-multipart>=0.0.9",
+
+    # Database
+    "sqlalchemy>=2.0.0",
+    "alembic>=1.13.0",
+
+    # LLM - core
+    "langchain>=0.3.0",
+    "langchain-core>=0.3.0",
+    "langchain-community>=0.3.0",
+    "langchain-ollama>=0.2.0",
+    "langgraph>=0.2.0",
+    "langgraph-checkpoint>=2.0.0",
+
+    # Auth
+    "pyjwt>=2.8.0",
+    "bcrypt>=4.1.0",
+
+    # Tools
+    "duckduckgo-search>=6.0.0",
+
+    # Utilities
+    "loguru>=0.7.0",
+    "httpx>=0.27.0",
+]
+
+[project.optional-dependencies]
+# Install only what you need
+openai = ["langchain-openai>=0.2.0"]
+anthropic = ["langchain-anthropic>=0.3.0"]
+bedrock = ["langchain-aws>=0.2.0"]
+voice = [
+    "fastrtc[stt]>=0.0.19",
+    "piper-tts>=1.2.0",
+]
+rag-chroma = ["langchain-chroma>=0.1.0", "chromadb>=0.5.0"]
+rag-faiss = ["faiss-cpu>=1.8.0"]
+rag-opensearch = ["opensearch-py>=2.0.0"]
+rag-pgvector = ["pgvector>=0.3.0", "psycopg2-binary>=2.9.0"]
+rag = [
+    "langchain-huggingface>=0.1.0",
+    "sentence-transformers>=3.0.0",
+]
+docs = [
+    "pypdf>=4.0.0",
+    "docx2txt>=0.8",
+    "openpyxl>=3.1.0",
+]
+all = [
+    "jarvis-backend[openai,anthropic,bedrock,voice,rag,rag-chroma,docs]",
+]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["app"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
