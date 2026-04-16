@@ -9,7 +9,7 @@ def get_stt_model():
     if _stt_model is not None:
         return _stt_model
 
-    from fastrtc import get_stt_model as get_whisper_stt
-    _stt_model = get_whisper_stt()
+    from distil_whisper_fastrtc import get_stt_model
+    _stt_model = get_stt_model()
     logger.info("STT model loaded (distil-whisper)")
     return _stt_model

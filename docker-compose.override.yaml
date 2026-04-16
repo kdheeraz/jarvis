@@ -1,0 +1,6 @@
+services:
+  backend:
+    environment:
+      - CONFIG_PATH=/app/config/config.docker.yaml
+    extra_hosts:
+      - "host.docker.internal:host-gateway"

@@ -2,6 +2,9 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import path from 'path'
 
+const backendHttp = process.env.VITE_PROXY_TARGET || 'http://localhost:8000'
+const backendWs = backendHttp.replace(/^http/, 'ws')
+
 export default defineConfig({
   plugins: [react()],
   resolve: {
@@ -12,14 +15,14 @@ export default defineConfig({
   server: {
     port: 3000,
     proxy: {
-      '/api': 'http://localhost:8000',
+      '/api': backendHttp,
       '/ws': {
-        target: 'ws://localhost:8000',
+        target: backendWs,
         ws: true,
       },
-      '/webrtc': 'http://localhost:8000',
+      '/webrtc': backendHttp,
       '/websocket': {
-        target: 'ws://localhost:8000',
+        target: backendWs,
         ws: true,
       },
     },

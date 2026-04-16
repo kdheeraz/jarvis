@@ -2,7 +2,7 @@
 name = "jarvis-backend"
 version = "0.1.0"
 description = "Jarvis AI Assistant Platform - Backend"
-requires-python = ">=3.11"
+requires-python = "==3.11.9"
 dependencies = [
     # Core
     "fastapi>=0.115.0",
@@ -29,7 +29,7 @@ dependencies = [
     "bcrypt>=4.1.0",
 
     # Tools
-    "duckduckgo-search>=6.0.0",
+    "ddgs>=9.0.0",
 
     # Utilities
     "loguru>=0.7.0",
@@ -42,8 +42,10 @@ openai = ["langchain-openai>=0.2.0"]
 anthropic = ["langchain-anthropic>=0.3.0"]
 bedrock = ["langchain-aws>=0.2.0"]
 voice = [
-    "fastrtc[stt]>=0.0.19",
+    "fastrtc[stt,tts]>=0.0.19",
     "piper-tts>=1.2.0",
+    "torchaudio>=2.11.0",
+    "distil_whisper_fastrtc>=0.1.0",
 ]
 rag-chroma = ["langchain-chroma>=0.1.0", "chromadb>=0.5.0"]
 rag-faiss = ["faiss-cpu>=1.8.0"]

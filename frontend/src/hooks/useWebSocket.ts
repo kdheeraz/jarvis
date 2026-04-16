@@ -5,9 +5,10 @@ import type { WSEvent } from '../types';
 
 export function useWebSocket() {
   const wsRef = useRef<ChatWebSocket | null>(null);
+  const connectedConvIdRef = useRef<string | null>(null);
   const {
     activeConversationId,
-    setActiveConversation,
+    adoptConversationId,
     addMessage,
     updateLastMessage,
     markLastMessageDone,
@@ -21,6 +22,7 @@ export function useWebSocket() {
   const connect = useCallback(
     (conversationId: string) => {
       wsRef.current?.disconnect();
+      connectedConvIdRef.current = conversationId;
 
       const ws = new ChatWebSocket(
         conversationId,
@@ -28,7 +30,12 @@ export function useWebSocket() {
           switch (event.type) {
             case 'conversation_created':
               if (event.conversationId) {
-                setActiveConversation(event.conversationId);
+                // The backend promoted 'new' to a real id. Record that our
+                // current socket is already bound so the effect below skips
+                // reconnecting, and use the lightweight id setter so the
+                // in-flight user + assistant messages aren't wiped.
+                connectedConvIdRef.current = event.conversationId;
+                adoptConversationId(event.conversationId);
               }
               break;
             case 'status':
@@ -79,7 +86,7 @@ export function useWebSocket() {
       ws.connect();
       wsRef.current = ws;
     },
-    [setActiveConversation, addMessage, updateLastMessage, markLastMessageDone, dropLastIfEmptyAssistant, setStreaming, setStatus, setConnected, loadConversations],
+    [adoptConversationId, addMessage, updateLastMessage, markLastMessageDone, dropLastIfEmptyAssistant, setStreaming, setStatus, setConnected, loadConversations],
   );
 
   const sendMessage = useCallback(
@@ -97,10 +104,7 @@ export function useWebSocket() {
       addMessage({ id: `assistant-${Date.now()}`, role: 'assistant', content: '', isStreaming: true });
       setStreaming(true);
 
-      // Small delay to ensure WS is connected
-      setTimeout(() => {
-        wsRef.current?.send('message', content);
-      }, 100);
+      wsRef.current?.send('message', content);
     },
     [activeConversationId, connect, addMessage, setStreaming],
   );
@@ -108,15 +112,21 @@ export function useWebSocket() {
   const disconnect = useCallback(() => {
     wsRef.current?.disconnect();
     wsRef.current = null;
+    connectedConvIdRef.current = null;
   }, []);
 
-  // Connect when conversation changes
+  // Connect when conversation changes — but skip if we're already connected
+  // to this id (e.g. right after 'new' was promoted to a real id).
   useEffect(() => {
-    if (activeConversationId) {
+    if (activeConversationId && connectedConvIdRef.current !== activeConversationId) {
       connect(activeConversationId);
     }
+  }, [activeConversationId, connect]);
+
+  // Tear down only on unmount, not on every dep change.
+  useEffect(() => {
     return () => disconnect();
-  }, [activeConversationId, connect, disconnect]);
+  }, [disconnect]);
 
   return { sendMessage, connect, disconnect };
 }

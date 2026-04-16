@@ -12,6 +12,7 @@ interface ChatState {
 
   setConversations: (convs: Conversation[]) => void;
   setActiveConversation: (id: string | null) => Promise<void>;
+  adoptConversationId: (id: string) => void;
   setMessages: (msgs: Message[]) => void;
   addMessage: (msg: Message) => void;
   updateLastMessage: (content: string) => void;
@@ -48,6 +49,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       }
     }
   },
+  adoptConversationId: (id) => set({ activeConversationId: id }),
   setMessages: (messages) => set({ messages }),
 
   addMessage: (msg) => set((state) => ({ messages: [...state.messages, msg] })),

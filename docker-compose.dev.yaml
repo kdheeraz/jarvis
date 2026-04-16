@@ -1,15 +1,32 @@
-version: "3.9"
-
 services:
   backend:
     build:
       context: ./backend
       target: dev
+    # WebRTC voice in Docker
+    # ----------------------
+    # aiortc would normally advertise the container's 172.x bridge IP as its
+    # ICE host candidate, which the browser cannot reach. `app.voice.docker_patch`
+    # overrides candidate gathering to bind a fixed UDP port on 0.0.0.0 and
+    # advertise WEBRTC_HOST_IP instead — the port below forwards that UDP
+    # traffic from the host to the container. Text chat (WebSocket) is
+    # unaffected.
     volumes:
       - ./backend:/app
       - ./config:/app/config
       - ./data:/app/data
       - ./models:/app/models
+      - hf-cache:/root/.cache/huggingface
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      - CONFIG_PATH=/app/config/config.docker.yaml
+      - HF_HOME=/root/.cache/huggingface
+      - WEBRTC_HOST_IP=127.0.0.1
+      - WEBRTC_UDP_PORT_MIN=7880
+      - WEBRTC_UDP_PORT_MAX=7889
+    ports:
+      - "7880-7889:7880-7889/udp"
     command: uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
   frontend:
@@ -20,6 +37,12 @@ services:
       - ./frontend/src:/app/src
       - ./frontend/public:/app/public
       - ./frontend/index.html:/app/index.html
+    environment:
+      - VITE_API_URL=
+      - VITE_PROXY_TARGET=http://backend:8000
     command: npm run dev -- --host 0.0.0.0 --port 3000
-    ports:
+    ports: !override
       - "${FRONTEND_PORT:-3000}:3000"
+
+volumes:
+  hf-cache:

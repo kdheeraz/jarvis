@@ -8,6 +8,7 @@ export class ChatWebSocket {
   private onDisconnect: () => void;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private shouldReconnect = true;
+  private pendingSends: string[] = [];
 
   constructor(
     conversationId: string,
@@ -29,6 +30,12 @@ export class ChatWebSocket {
     this.ws.onopen = () => {
       this.onConnect();
       this._startPing();
+      if (this.pendingSends.length && this.ws) {
+        for (const payload of this.pendingSends) {
+          this.ws.send(payload);
+        }
+        this.pendingSends = [];
+      }
     };
 
     this.ws.onmessage = (event) => {
@@ -50,8 +57,11 @@ export class ChatWebSocket {
   }
 
   send(type: string, content?: string) {
+    const payload = JSON.stringify({ type, content });
     if (this.ws?.readyState === WebSocket.OPEN) {
-      this.ws.send(JSON.stringify({ type, content }));
+      this.ws.send(payload);
+    } else if (type !== 'ping') {
+      this.pendingSends.push(payload);
     }
   }
 

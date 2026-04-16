@@ -79,6 +79,11 @@ def create_voice_stream():
         )
         return None
 
+    # Must run before any aiortc PeerConnection is created so the patched
+    # candidate gathering is in place. No-op unless WEBRTC_HOST_IP is set.
+    from app.voice.docker_patch import apply_webrtc_docker_patch
+    apply_webrtc_docker_patch()
+
     from app.llm.agent import get_agent
     from app.voice.stt import get_stt_model
     from app.voice.tts import get_tts_model
@@ -154,6 +159,11 @@ def create_voice_stream():
         ReplyOnPause(handle_audio),
         modality="audio",
         mode="send-receive",
+        # fastrtc defaults to 1 — any not-yet-cleaned-up previous peer
+        # connection then rejects the next offer with concurrency_limit_reached,
+        # which in practice means "Voice UI closes as soon as clicked" the
+        # second time. Raise it so lingering PCs don't block new sessions.
+        concurrency_limit=10,
     )
 
     return stream

@@ -5,6 +5,7 @@ services:
     build: ./backend
     ports:
       - "${BACKEND_PORT:-8000}:8000"
+      - "7880-7889:7880-7889/udp"
     volumes:
       - ./config:/app/config
       - ./data:/app/data
@@ -18,6 +19,15 @@ services:
       - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY:-}
       - AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION:-us-east-1}
       - JWT_SECRET_KEY=${JWT_SECRET_KEY:-change-me-in-production}
+      - WEBRTC_HOST_IP=${WEBRTC_HOST_IP:-127.0.0.1}
+      - WEBRTC_UDP_PORT_MIN=7880
+      - WEBRTC_UDP_PORT_MAX=7889
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health')"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+      start_period: 30s
     networks:
       - jarvis-net
     restart: unless-stopped
@@ -26,10 +36,11 @@ services:
     build: ./frontend
     ports:
       - "${FRONTEND_PORT:-3000}:80"
-    environment:
-      - VITE_API_URL=http://localhost:${BACKEND_PORT:-8000}
+    # VITE_API_URL is left empty so the frontend uses relative URLs,
+    # which nginx proxies to the backend container.
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     networks:
       - jarvis-net
     restart: unless-stopped

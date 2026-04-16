@@ -13,6 +13,7 @@ const STATE_LABELS: Record<VoiceState, string> = {
   idle: 'Starting...',
   connecting: 'Connecting...',
   listening: 'Listening...',
+  processing: 'Processing...',
   speaking: 'Speaking...',
 };
 
@@ -20,6 +21,7 @@ const STATE_COLORS: Record<VoiceState, string> = {
   idle: 'from-surface-900 to-surface-950',
   connecting: 'from-surface-900 to-surface-950',
   listening: 'from-blue-950 to-surface-950',
+  processing: 'from-indigo-950 to-surface-950',
   speaking: 'from-primary-950 to-surface-950',
 };
 
