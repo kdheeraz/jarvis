@@ -44,7 +44,6 @@ bedrock = ["langchain-aws>=0.2.0"]
 voice = [
     "fastrtc[stt,tts]>=0.0.19",
     "piper-tts>=1.2.0",
-    "torchaudio>=2.11.0",
     "distil_whisper_fastrtc>=0.1.0",
 ]
 rag-chroma = ["langchain-chroma>=0.1.0", "chromadb>=0.5.0"]

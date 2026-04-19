@@ -22,12 +22,6 @@ services:
       - WEBRTC_HOST_IP=${WEBRTC_HOST_IP:-127.0.0.1}
       - WEBRTC_UDP_PORT_MIN=7880
       - WEBRTC_UDP_PORT_MAX=7889
-    healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health')"]
-      interval: 5s
-      timeout: 3s
-      retries: 30
-      start_period: 30s
     networks:
       - jarvis-net
     restart: unless-stopped
@@ -39,8 +33,7 @@ services:
     # VITE_API_URL is left empty so the frontend uses relative URLs,
     # which nginx proxies to the backend container.
     depends_on:
-      backend:
-        condition: service_healthy
+      - backend
     networks:
       - jarvis-net
     restart: unless-stopped
