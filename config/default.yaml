@@ -1,5 +1,6 @@
 app:
   name: "Jarvis"
+  theme: "#3b82f6"
   host: "0.0.0.0"
   port: 8000
   debug: false

@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field
 
 class AppConfig(BaseModel):
     name: str = "Jarvis"
+    theme: str = "#3b82f6"  # Primary brand color (hex). Drives UI accents like the voice orb.
     host: str = "0.0.0.0"
     port: int = 8000
     debug: bool = False
@@ -116,6 +117,34 @@ class GroqTTSConfig(BaseModel):
     api_key_env: str = "GROQ_API_KEY"
 
 
+class ChatTTSConfig(BaseModel):
+    """Local ChatTTS (2Noise/ChatTTS) — expressive dialogue TTS with inline
+    emotion tokens like [laugh], [break], [uv_break], [lbreak]."""
+    device: str = "cpu"          # "cpu" | "cuda" | "mps"
+    compile: bool = False        # torch.compile first-run warmup, GPU-only
+    speaker_seed: int = 42       # deterministic speaker embedding
+    temperature: float = 0.3
+    top_p: float = 0.7
+    top_k: int = 20
+    sample_rate: int = 24000     # ChatTTS emits 24kHz float32
+    refine_text_prompt: str = "[oral_2][laugh_0][break_4]"
+
+
+class EmotionTagsConfig(BaseModel):
+    """LLM-side instruction that teaches the model to emit inline emotion tags
+    (e.g. <laugh>, <sigh>) for expressive TTS backends like Orpheus or
+    ChatTTS. Disable for TTS backends that would speak the tags literally
+    (Piper, Edge, Kokoro)."""
+    enabled: bool = False
+    allowed_tags: list[str] = ["<laugh>", "<chuckle>", "<sigh>", "<gasp>", "<cough>"]
+    instruction_template: str = (
+        "When it genuinely fits the emotional tone, you may sprinkle at most "
+        "one or two of these inline cues between sentences: {tags}. "
+        "Place them as standalone tokens, never inside a word. "
+        "Skip them entirely if the reply is short, factual, or neutral."
+    )
+
+
 class FasterWhisperConfig(BaseModel):
     model_size: str = "small.en"
     device: str = "cpu"
@@ -133,6 +162,8 @@ class VoiceConfig(BaseModel):
     edge: EdgeTTSConfig = EdgeTTSConfig()
     kokoro: KokoroConfig = KokoroConfig()
     groq: GroqTTSConfig = GroqTTSConfig()
+    chattts: ChatTTSConfig = ChatTTSConfig()
+    emotion_tags: EmotionTagsConfig = EmotionTagsConfig()
     faster_whisper: FasterWhisperConfig = FasterWhisperConfig()
 
 

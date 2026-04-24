@@ -11,6 +11,7 @@ def health_check():
     return {
         "status": "ok",
         "name": config.app.name,
+        "theme": config.app.theme,
         "version": "0.1.0",
         "llm_provider": config.llm.provider,
         "rag_enabled": config.rag.enabled,
