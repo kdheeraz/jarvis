@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { ChatPage } from './pages/ChatPage';
 import { LoginPage } from './pages/LoginPage';
@@ -8,8 +9,14 @@ import { ToolsPage } from './pages/admin/ToolsPage';
 import { RagPage } from './pages/admin/RagPage';
 import { UsersPage } from './pages/admin/UsersPage';
 import { ConversationsPage } from './pages/admin/ConversationsPage';
+import { useAppStore } from './store/appStore';
 
 export default function App() {
+  const loadAppInfo = useAppStore((s) => s.loadAppInfo);
+  useEffect(() => {
+    loadAppInfo();
+  }, [loadAppInfo]);
+
   return (
     <BrowserRouter>
       <Routes>

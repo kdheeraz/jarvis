@@ -11,6 +11,9 @@ from app.config import get_config, _project_root
 from app.db.engine import init_db, get_session_factory
 from app.db.repositories.user import ensure_default_admin
 
+from dotenv import load_dotenv
+load_dotenv()  # Load environment variables from .env file
+
 
 
 @asynccontextmanager

@@ -3,6 +3,7 @@ import { MessageSquare, Plus, Trash2, Moon, Sun, Settings, LogIn, LogOut } from 
 import { clsx } from 'clsx';
 import { useChatStore } from '../../store/chatStore';
 import { useAuthStore } from '../../store/authStore';
+import { useAppStore } from '../../store/appStore';
 import { useNavigate } from 'react-router-dom';
 
 interface Props {
@@ -21,6 +22,7 @@ export function AppLayout({ children, embed }: Props) {
   });
   const { conversations, activeConversationId, setActiveConversation, startNewChat, loadConversations, deleteConversation } = useChatStore();
   const { isAuthenticated, role, logout } = useAuthStore();
+  const agentName = useAppStore((s) => s.agentName);
   const isAdmin = isAuthenticated && role === 'admin';
   const navigate = useNavigate();
 
@@ -129,7 +131,7 @@ export function AppLayout({ children, embed }: Props) {
           >
             <MessageSquare size={20} />
           </button>
-          <h1 className="font-semibold">Jarvis</h1>
+          <h1 className="font-semibold">{agentName}</h1>
         </div>
 
         {children}

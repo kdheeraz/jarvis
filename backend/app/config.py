@@ -46,6 +46,12 @@ class BedrockConfig(BaseModel):
     temperature: float = 0.7
 
 
+class GroqLLMConfig(BaseModel):
+    model: str = "llama-3.3-70b-versatile"
+    api_key: str = ""
+    temperature: float = 0.7
+
+
 class LLMConfig(BaseModel):
     provider: str = "ollama"
     system_prompt: str = "You are Jarvis, a helpful AI assistant. Be concise, accurate, and helpful."
@@ -53,6 +59,7 @@ class LLMConfig(BaseModel):
     openai: OpenAIConfig = OpenAIConfig()
     anthropic: AnthropicConfig = AnthropicConfig()
     bedrock: BedrockConfig = BedrockConfig()
+    groq: GroqLLMConfig = GroqLLMConfig()
 
 
 class ChromaDBConfig(BaseModel):
@@ -90,15 +97,47 @@ class PiperConfig(BaseModel):
     config_path: str = "./models/en.json"
 
 
+class EdgeTTSConfig(BaseModel):
+    voice: str = "en-US-AriaNeural"
+    rate: str = "+0%"
+    pitch: str = "+0Hz"
+
+
+class KokoroConfig(BaseModel):
+    voice: str = "am_michael"
+    speed: float = 1.0
+    lang: str = "en-us"
+
+
+class GroqTTSConfig(BaseModel):
+    voice: str = "Calum-PlayAI"
+    model: str = "playai-tts"
+    base_url: str = "https://api.groq.com/openai/v1"
+    api_key_env: str = "GROQ_API_KEY"
+
+
+class FasterWhisperConfig(BaseModel):
+    model_size: str = "small.en"
+    device: str = "cpu"
+    compute_type: str = "int8"
+    beam_size: int = 1
+    vad_filter: bool = False
+    language: str | None = "en"
+
+
 class VoiceConfig(BaseModel):
     enabled: bool = True
     stt_model: str = "distil-whisper"
     tts_model: str = "piper"
     piper: PiperConfig = PiperConfig()
+    edge: EdgeTTSConfig = EdgeTTSConfig()
+    kokoro: KokoroConfig = KokoroConfig()
+    groq: GroqTTSConfig = GroqTTSConfig()
+    faster_whisper: FasterWhisperConfig = FasterWhisperConfig()
 
 
 class ToolsConfig(BaseModel):
-    enabled: list[str] = ["web_search", "datetime", "calculator"]
+    enabled: list[str] = ["web_search", "datetime_tool", "calculator", "rag_search"]
 
 
 class DatabaseConfig(BaseModel):

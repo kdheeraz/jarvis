@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 interface WidgetProps {
   serverUrl: string;
@@ -8,10 +8,19 @@ interface WidgetProps {
 
 export function Widget({ serverUrl, position }: WidgetProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [agentName, setAgentName] = useState('Jarvis');
 
-  // serverUrl should point to the frontend app, not the backend API
-  // e.g., data-server="http://localhost:5173" or data-server="https://jarvis.example.com"
-  const chatUrl = `${serverUrl.replace(/\/$/, '')}/?embed=true`;
+  const base = serverUrl.replace(/\/$/, '');
+  const chatUrl = `${base}/?embed=true`;
+
+  useEffect(() => {
+    fetch(`${base}/api/health`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (data?.name) setAgentName(data.name);
+      })
+      .catch(() => {});
+  }, [base]);
 
   const positionStyles: Record<string, React.CSSProperties> = {
     'bottom-right': { bottom: '20px', right: '20px' },
@@ -44,7 +53,7 @@ export function Widget({ serverUrl, position }: WidgetProps) {
               border: 'none',
               colorScheme: 'normal',
             }}
-            title="Jarvis Chat"
+            title={`${agentName} Chat`}
             allow="microphone"
           />
         </div>

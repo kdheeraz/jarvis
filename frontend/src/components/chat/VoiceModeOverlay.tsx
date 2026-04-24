@@ -1,6 +1,7 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { X } from 'lucide-react';
 import type { VoiceState } from '../../hooks/useVoiceMode';
+import { useAppStore } from '../../store/appStore';
 
 interface Props {
   isActive: boolean;
@@ -28,6 +29,7 @@ const STATE_COLORS: Record<VoiceState, string> = {
 export function VoiceModeOverlay({ isActive, state, micStream, onStop }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
+  const agentName = useAppStore((s) => s.agentName);
   const audioCtxRef = useRef<AudioContext | null>(null);
   const animationRef = useRef<number>(0);
 
@@ -174,7 +176,7 @@ export function VoiceModeOverlay({ isActive, state, micStream, onStop }: Props) 
 
       {/* Title */}
       <div className="absolute top-8 left-0 right-0 text-center">
-        <h1 className="text-white/80 text-lg font-medium">Jarvis Voice Mode</h1>
+        <h1 className="text-white/80 text-lg font-medium">{agentName} Voice Mode</h1>
       </div>
 
       {/* Visualizer */}

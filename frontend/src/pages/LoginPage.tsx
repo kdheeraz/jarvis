@@ -2,12 +2,14 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Bot, LogIn } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
+import { useAppStore } from '../store/appStore';
 
 export function LoginPage() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const { login, isLoading } = useAuthStore();
+  const agentName = useAppStore((s) => s.agentName);
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -28,7 +30,7 @@ export function LoginPage() {
           <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-primary-400 to-primary-700 shadow-lg shadow-primary-900/30 rounded-full flex items-center justify-center">
             <Bot size={32} className="text-white" />
           </div>
-          <h1 className="text-2xl font-bold">Jarvis Admin</h1>
+          <h1 className="text-2xl font-bold">{agentName} Admin</h1>
           <p className="text-surface-500 mt-1">Sign in to access the admin panel</p>
         </div>
 

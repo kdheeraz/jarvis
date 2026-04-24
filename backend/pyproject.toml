@@ -41,10 +41,14 @@ dependencies = [
 openai = ["langchain-openai>=0.2.0"]
 anthropic = ["langchain-anthropic>=0.3.0"]
 bedrock = ["langchain-aws>=0.2.0"]
+groq = ["langchain-groq>=0.2.0"]
 voice = [
     "fastrtc[stt,tts]>=0.0.19",
     "piper-tts>=1.2.0",
     "distil_whisper_fastrtc>=0.1.0",
+    "edge-tts>=6.1.0",
+    "av>=11.0.0",
+    "faster-whisper>=1.0.0",
 ]
 rag-chroma = ["langchain-chroma>=0.1.0", "chromadb>=0.5.0"]
 rag-faiss = ["faiss-cpu>=1.8.0"]
@@ -60,7 +64,7 @@ docs = [
     "openpyxl>=3.1.0",
 ]
 all = [
-    "jarvis-backend[openai,anthropic,bedrock,voice,rag,rag-chroma,docs]",
+    "jarvis-backend[openai,anthropic,bedrock,groq,voice,rag,rag-chroma,docs]",
 ]
 dev = [
     "pytest>=8.0.0",

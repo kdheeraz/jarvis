@@ -20,6 +20,8 @@ def create_llm(config: JarvisConfig | None = None) -> BaseChatModel:
         return _create_anthropic(config)
     elif provider == "bedrock":
         return _create_bedrock(config)
+    elif provider == "groq":
+        return _create_groq(config)
     else:
         raise ValueError(f"Unknown LLM provider: {provider}")
 
@@ -65,4 +67,20 @@ def _create_bedrock(config: JarvisConfig) -> BaseChatModel:
         model_id=cfg.model_id,
         region_name=cfg.region,
         model_kwargs={"temperature": cfg.temperature},
+    )
+
+
+def _create_groq(config: JarvisConfig) -> BaseChatModel:
+    import os
+
+    from langchain_groq import ChatGroq
+
+    cfg = config.llm.groq
+    api_key = cfg.api_key or os.environ.get("GROQ_API_KEY", "")
+    if not api_key:
+        raise RuntimeError("Groq LLM requires GROQ_API_KEY (env or config).")
+    return ChatGroq(
+        model=cfg.model,
+        api_key=api_key,
+        temperature=cfg.temperature,
     )

@@ -1,10 +1,12 @@
 import { useEffect, useRef } from 'react';
 import { Bot, Loader2 } from 'lucide-react';
 import { useChatStore } from '../../store/chatStore';
+import { useAppStore } from '../../store/appStore';
 import { MessageBubble } from './MessageBubble';
 
 export function ChatWindow() {
   const { messages, statusMessage } = useChatStore();
+  const agentName = useAppStore((s) => s.agentName);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   // Auto-scroll to bottom on new messages or status change
@@ -19,7 +21,7 @@ export function ChatWindow() {
           <div className="w-20 h-20 mx-auto mb-6 bg-primary-100 dark:bg-primary-900 rounded-full flex items-center justify-center">
             <Bot size={40} className="text-primary-600 dark:text-primary-400" />
           </div>
-          <h2 className="text-2xl font-semibold mb-2">Hello! I'm Jarvis</h2>
+          <h2 className="text-2xl font-semibold mb-2">Hello! I'm {agentName}</h2>
           <p className="text-surface-500 dark:text-surface-400 max-w-md">
             Your AI assistant. Ask me anything, or use the microphone for voice chat.
           </p>

@@ -19,11 +19,11 @@ COPY . .
 # Dev target (used by docker-compose.dev.yaml)
 FROM base AS dev
 RUN pip install --no-cache-dir --index-url https://download.pytorch.org/whl/cpu torch torchaudio
-RUN pip install --no-cache-dir ".[dev,voice,rag]"
+RUN pip install --no-cache-dir ".[dev,voice,rag,rag-faiss,rag-chroma,groq]"
 CMD ["uvicorn", "app.main:app", "--reload", "--host", "0.0.0.0", "--port", "8000"]
 
 # Production target
 FROM base AS production
 RUN pip install --no-cache-dir --index-url https://download.pytorch.org/whl/cpu torch torchaudio
-RUN pip install --no-cache-dir ".[voice,rag]"
+RUN pip install --no-cache-dir ".[voice,rag,rag-faiss,rag-chroma,groq]"
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]

@@ -36,14 +36,52 @@ def get_tts_model():
 
     config = get_config()
 
-    if config.voice.tts_model == "piper":
+    if config.voice.tts_model == "groq":
+        from app.voice.tts_groq import GroqTTSModel
+
+        _tts_model = GroqTTSModel(
+            voice=config.voice.groq.voice,
+            model=config.voice.groq.model,
+            base_url=config.voice.groq.base_url,
+            api_key_env=config.voice.groq.api_key_env,
+        )
+    elif config.voice.tts_model == "edge":
+        from app.voice.tts_edge import EdgeTTSModel
+
+        _tts_model = EdgeTTSModel(
+            voice=config.voice.edge.voice,
+            rate=config.voice.edge.rate,
+            pitch=config.voice.edge.pitch,
+        )
+    elif config.voice.tts_model == "piper":
         _tts_model = PiperTTSModel(
             model_path=config.voice.piper.model_path,
             config_path=config.voice.piper.config_path,
         )
     elif config.voice.tts_model == "kokoro":
-        from fastrtc import get_tts_model as get_kokoro_tts
-        _tts_model = get_kokoro_tts()
+        from fastrtc import KokoroTTSOptions, get_tts_model as get_kokoro_tts
+
+        base = get_kokoro_tts()
+        options = KokoroTTSOptions(
+            voice=config.voice.kokoro.voice,
+            speed=config.voice.kokoro.speed,
+            lang=config.voice.kokoro.lang,
+        )
+
+        class _KokoroWrapped:
+            """Bind voice/speed/lang so the caller's stream_tts_sync(text) works."""
+
+            def __init__(self, model, opts):
+                self._model = model
+                self._options = opts
+
+            def stream_tts_sync(self, text):
+                yield from self._model.stream_tts_sync(text, self._options)
+
+        _tts_model = _KokoroWrapped(base, options)
+        logger.info(
+            f"Kokoro TTS loaded: voice={options.voice} speed={options.speed}"
+        )
     else:
         raise ValueError(f"Unknown TTS model: {config.voice.tts_model}")
 
