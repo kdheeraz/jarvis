@@ -23,6 +23,13 @@ services:
       - WEBRTC_HOST_IP=${WEBRTC_HOST_IP:-127.0.0.1}
       - WEBRTC_UDP_PORT_MIN=7880
       - WEBRTC_UDP_PORT_MAX=7889
+      # Mneme long-term memory
+      - MNEME_ENABLED=${MNEME_ENABLED:-false}
+      - MNEME_BASE_URL=${MNEME_BASE_URL:-http://host.docker.internal:8000}
+      - MNEME_API_KEY=${MNEME_API_KEY:-}
+    extra_hosts:
+      # reach the Mneme API running on the host (Mac auto; Linux via host-gateway)
+      - "host.docker.internal:host-gateway"
     networks:
       - jarvis-net
     restart: unless-stopped

@@ -8,6 +8,7 @@ from loguru import logger
 from app.db.engine import get_session_factory
 from app.db.repositories.conversation import add_message, create_conversation, get_conversation
 from app.llm.agent import get_agent
+from app.memory import mneme
 
 router = APIRouter()
 
@@ -62,11 +63,16 @@ async def websocket_chat(websocket: WebSocket, conversation_id: str):
             # Send thinking status
             await websocket.send_json({"type": "status", "message": "Thinking..."})
 
+            # Recall relevant long-term memory (Mneme) and prepend it as context for this turn.
+            # Best-effort: returns "" if memory is disabled or unavailable.
+            mem_block = await loop.run_in_executor(_executor, mneme.recall, content)
+            agent_input = f"{mem_block}\n\nUser: {content}" if mem_block else content
+
             # Run sync agent.stream in thread pool, send results back async
             full_response = ""
 
             def _stream_agent():
-                return list(agent.stream(content, thread_id=conversation_id))
+                return list(agent.stream(agent_input, thread_id=conversation_id))
 
             events = await loop.run_in_executor(_executor, _stream_agent)
 
@@ -96,6 +102,8 @@ async def websocket_chat(websocket: WebSocket, conversation_id: str):
                         "messageId": msg.id,
                         "fullContent": full_response,
                     })
+                    # Store this turn's user message in long-term memory (fire-and-forget).
+                    loop.run_in_executor(_executor, mneme.remember, content)
 
     except WebSocketDisconnect:
         logger.info(f"WebSocket disconnected: conversation={conversation_id}")

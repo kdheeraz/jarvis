@@ -78,11 +78,19 @@ class JarvisAgent:
         yield ("done", None)
 
     def _prepare_messages(self, user_message: str, history: list | None) -> list:
-        messages = [SystemMessage(content=self._config.llm.system_prompt)]
+        messages = [SystemMessage(content=self._build_system_prompt())]
         if history:
             messages.extend(history)
         messages.append(HumanMessage(content=user_message))
         return messages
+
+    def _build_system_prompt(self) -> str:
+        prompt = self._config.llm.system_prompt
+        et = self._config.voice.emotion_tags
+        if et.enabled and et.allowed_tags:
+            tags = ", ".join(et.allowed_tags)
+            prompt = f"{prompt}\n\n{et.instruction_template.format(tags=tags)}"
+        return prompt
 
 
 # Singleton

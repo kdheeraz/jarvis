@@ -1,16 +1,18 @@
 import { useEffect, useState } from 'react';
 
 interface WidgetProps {
-  serverUrl: string;
+  frontendUrl: string;
   position: string;
   theme: string;
 }
 
-export function Widget({ serverUrl, position }: WidgetProps) {
+export function Widget({ frontendUrl, position, theme }: WidgetProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [agentName, setAgentName] = useState('Jarvis');
+  const isHex = /^#[0-9a-f]{3,8}$/i.test(theme);
+  const [themeColor, setThemeColor] = useState(isHex ? theme : '#2563eb');
 
-  const base = serverUrl.replace(/\/$/, '');
+  const base = frontendUrl.replace(/\/$/, '');
   const chatUrl = `${base}/?embed=true`;
 
   useEffect(() => {
@@ -18,9 +20,14 @@ export function Widget({ serverUrl, position }: WidgetProps) {
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
         if (data?.name) setAgentName(data.name);
+        if (!isHex && /^#[0-9a-f]{3,8}$/i.test(data?.theme || '')) {
+          setThemeColor(data.theme);
+        }
       })
       .catch(() => {});
-  }, [base]);
+  }, [base, isHex]);
+
+  const shadowColor = themeColor + '66';
 
   const positionStyles: Record<string, React.CSSProperties> = {
     'bottom-right': { bottom: '20px', right: '20px' },
@@ -66,14 +73,14 @@ export function Widget({ serverUrl, position }: WidgetProps) {
           width: '56px',
           height: '56px',
           borderRadius: '28px',
-          background: '#2563eb',
+          background: themeColor,
           color: '#fff',
           border: 'none',
           cursor: 'pointer',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          boxShadow: '0 4px 16px rgba(37, 99, 235, 0.4)',
+          boxShadow: `0 4px 16px ${shadowColor}`,
           transition: 'transform 0.2s',
           fontSize: '24px',
         }}

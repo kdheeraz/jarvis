@@ -58,6 +58,20 @@ def get_tts_model():
             model_path=config.voice.piper.model_path,
             config_path=config.voice.piper.config_path,
         )
+    elif config.voice.tts_model == "chattts":
+        from app.voice.tts_chattts import ChatTTSModel
+
+        c = config.voice.chattts
+        _tts_model = ChatTTSModel(
+            device=c.device,
+            compile=c.compile,
+            speaker_seed=c.speaker_seed,
+            temperature=c.temperature,
+            top_p=c.top_p,
+            top_k=c.top_k,
+            sample_rate=c.sample_rate,
+            refine_text_prompt=c.refine_text_prompt,
+        )
     elif config.voice.tts_model == "kokoro":
         from fastrtc import KokoroTTSOptions, get_tts_model as get_kokoro_tts
 

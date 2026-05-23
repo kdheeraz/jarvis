@@ -32,6 +32,7 @@ def _create_ollama(config: JarvisConfig) -> BaseChatModel:
     cfg = config.llm.ollama
     return ChatOllama(
         model=cfg.model,
+        reasoning=cfg.reasoning,
         base_url=cfg.base_url,
         temperature=cfg.temperature,
     )

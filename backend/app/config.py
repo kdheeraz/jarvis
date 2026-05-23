@@ -27,30 +27,35 @@ class OllamaConfig(BaseModel):
     model: str = "qwen2.5:3b"
     base_url: str = "http://ollama:11434"
     temperature: float = 0.7
+    reasoning: bool = False
 
 
 class OpenAIConfig(BaseModel):
     model: str = "gpt-4o"
     api_key: str = ""
     temperature: float = 0.7
+    reasoning: bool = False
 
 
 class AnthropicConfig(BaseModel):
     model: str = "claude-sonnet-4-20250514"
     api_key: str = ""
     temperature: float = 0.7
+    reasoning: bool = False
 
 
 class BedrockConfig(BaseModel):
     model_id: str = "anthropic.claude-3-sonnet-20240229-v1:0"
     region: str = "us-east-1"
     temperature: float = 0.7
+    reasoning: bool = False
 
 
 class GroqLLMConfig(BaseModel):
     model: str = "llama-3.3-70b-versatile"
     api_key: str = ""
     temperature: float = 0.7
+    reasoning: bool = False
 
 
 class LLMConfig(BaseModel):
@@ -175,6 +180,18 @@ class DatabaseConfig(BaseModel):
     url: str = "sqlite:///./data/jarvis.db"
 
 
+class MemoryConfig(BaseModel):
+    """Long-term memory backed by Mneme (memory-as-a-service).
+    Jarvis recalls relevant facts before answering and stores new ones after.
+    api_key/base_url usually come from env (MNEME_API_KEY / MNEME_BASE_URL)."""
+    enabled: bool = False
+    base_url: str = "http://host.docker.internal:8000"  # Mneme API (host from inside a container)
+    api_key: str = ""                                   # Mneme agent-scoped key
+    user_id: str = "jarvis"                             # scopes all memories to one user
+    recall_limit: int = 5
+    recall_mode: str = "vector"                         # vector | hybrid | lexical
+
+
 class JarvisConfig(BaseModel):
     app: AppConfig = AppConfig()
     auth: AuthConfig = AuthConfig()
@@ -183,6 +200,7 @@ class JarvisConfig(BaseModel):
     voice: VoiceConfig = VoiceConfig()
     tools: ToolsConfig = ToolsConfig()
     database: DatabaseConfig = DatabaseConfig()
+    memory: MemoryConfig = MemoryConfig()
 
 
 def _resolve_env_vars(data: dict) -> dict:
@@ -250,6 +268,16 @@ def load_config(config_path: Optional[str] = None) -> JarvisConfig:
     jwt_secret = os.environ.get("JWT_SECRET_KEY")
     if jwt_secret:
         config_data.setdefault("auth", {})["jwt_secret_key"] = jwt_secret
+
+    # Mneme long-term memory (from env)
+    if os.environ.get("MNEME_API_KEY"):
+        config_data.setdefault("memory", {})["api_key"] = os.environ["MNEME_API_KEY"]
+    if os.environ.get("MNEME_BASE_URL"):
+        config_data.setdefault("memory", {})["base_url"] = os.environ["MNEME_BASE_URL"]
+    if os.environ.get("MNEME_ENABLED"):
+        config_data.setdefault("memory", {})["enabled"] = (
+            os.environ["MNEME_ENABLED"].lower() in ("1", "true", "yes", "on")
+        )
 
     return JarvisConfig(**config_data)
 

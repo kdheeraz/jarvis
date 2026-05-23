@@ -23,6 +23,7 @@ llm:
     model: "qwen2.5:3b"
     base_url: "http://ollama:11434"
     temperature: 0.7
+    reasoning: false
   openai:
     model: "gpt-4o"
     api_key: "${OPENAI_API_KEY}"
@@ -77,6 +78,18 @@ voice:
     model: "playai-tts"
     base_url: "https://api.groq.com/openai/v1"
     api_key_env: "GROQ_API_KEY"
+  chattts:
+    device: "cpu"            # "cpu" | "cuda" | "mps"
+    compile: false           # GPU-only torch.compile warmup
+    speaker_seed: 42         # deterministic speaker embedding
+    temperature: 0.3
+    top_p: 0.7
+    top_k: 20
+    sample_rate: 24000
+    refine_text_prompt: "[oral_2][laugh_0][break_4]"
+  emotion_tags:
+    enabled: false           # set true with chattts/orpheus for inline cues
+    allowed_tags: ["<laugh>", "<chuckle>", "<sigh>", "<gasp>", "<cough>"]
   faster_whisper:
     model_size: "small.en"
     device: "cpu"
