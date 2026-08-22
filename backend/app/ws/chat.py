@@ -14,6 +14,40 @@ router = APIRouter()
 
 _executor = ThreadPoolExecutor(max_workers=4)
 
+_STREAM_DONE = object()
+
+
+async def _aiter_sync_stream(gen_factory):
+    """Bridge a blocking generator into an async iterator without draining it first.
+
+    `agent.stream()` is a synchronous generator; running it to completion in a
+    thread (e.g. `list(agent.stream(...))`) would buffer the whole reply before
+    the first token reaches the browser, killing the real-time feel. Instead we
+    run the generator in a worker thread and hand each item to the event loop as
+    soon as it is produced, so chunks are forwarded token-by-token.
+    """
+    loop = asyncio.get_event_loop()
+    queue: asyncio.Queue = asyncio.Queue()
+
+    def _produce():
+        try:
+            for item in gen_factory():
+                loop.call_soon_threadsafe(queue.put_nowait, item)
+        except Exception as exc:  # surface producer errors to the consumer
+            loop.call_soon_threadsafe(queue.put_nowait, ("__error__", exc))
+        finally:
+            loop.call_soon_threadsafe(queue.put_nowait, _STREAM_DONE)
+
+    loop.run_in_executor(_executor, _produce)
+
+    while True:
+        item = await queue.get()
+        if item is _STREAM_DONE:
+            return
+        if isinstance(item, tuple) and item and item[0] == "__error__":
+            raise item[1]
+        yield item
+
 
 @router.websocket("/ws/chat/{conversation_id}")
 async def websocket_chat(websocket: WebSocket, conversation_id: str):
@@ -68,15 +102,16 @@ async def websocket_chat(websocket: WebSocket, conversation_id: str):
             mem_block = await loop.run_in_executor(_executor, mneme.recall, content)
             agent_input = f"{mem_block}\n\nUser: {content}" if mem_block else content
 
-            # Run sync agent.stream in thread pool, send results back async
+            # Stream the agent's reply token-by-token. _aiter_sync_stream pumps
+            # the blocking generator from a worker thread and forwards each event
+            # as it arrives, so the browser sees chunks live instead of one burst.
             full_response = ""
 
-            def _stream_agent():
-                return list(agent.stream(agent_input, thread_id=conversation_id))
+            stream = _aiter_sync_stream(
+                lambda: agent.stream(agent_input, thread_id=conversation_id)
+            )
 
-            events = await loop.run_in_executor(_executor, _stream_agent)
-
-            for event_type, event_data in events:
+            async for event_type, event_data in stream:
                 if event_type == "chunk":
                     full_response += event_data
                     await websocket.send_json({"type": "chunk", "content": event_data})

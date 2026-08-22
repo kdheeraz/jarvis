@@ -3,6 +3,7 @@ from fastapi import APIRouter, Depends
 from app.auth.middleware import require_admin
 from app.config import get_config, reload_config, save_config, _deep_merge
 from app.llm.agent import rebuild_agent
+from app.voice.tts import reset_tts_model
 from app.schemas.config import ConfigUpdateRequest
 
 router = APIRouter(prefix="/api/admin/config", tags=["admin-config"], dependencies=[Depends(require_admin)])
@@ -36,6 +37,7 @@ def update_config(request: ConfigUpdateRequest):
 
     reload_config()
     rebuild_agent()
+    reset_tts_model()
 
     return {"status": "ok", "message": "Configuration updated and reloaded"}
 
@@ -44,4 +46,5 @@ def update_config(request: ConfigUpdateRequest):
 def reload():
     reload_config()
     rebuild_agent()
+    reset_tts_model()
     return {"status": "ok", "message": "Configuration reloaded"}

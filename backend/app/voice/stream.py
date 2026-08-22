@@ -1,13 +1,44 @@
+import threading
+from concurrent.futures import ThreadPoolExecutor
 from typing import Any
 
 from loguru import logger
 
 from app.config import get_config
+from app.memory import mneme
+from app.voice.text import strip_markdown_for_speech
 
 # Per-connection voice conversation mapping is handled by fastrtc's
 # per-handler `set_args` — we keep a reference to the mounted Stream so
 # the bind endpoint can push conversation_id into the right connection.
 _voice_stream: Any | None = None
+
+_recall_executor = ThreadPoolExecutor(max_workers=2)
+
+# Per-conversation cache of the last recalled memory block. Recall does a
+# ~0.8s network + vector search, so running it inline would delay every reply.
+# Instead each turn uses the context recalled on the PREVIOUS turn (instant)
+# and refreshes in the background for the next one — a one-turn lag traded for
+# a snappier response. First turn of a conversation has no memory yet.
+_recall_cache: dict[str, str] = {}
+
+# TTS flush sizing (see the streaming loop in handle_audio). Anything shorter
+# than _CHUNK_MIN_CHARS isn't worth its own Piper utterance; the first flush of
+# a turn may break at a clause instead of a sentence, but only once it has
+# _FIRST_CHUNK_MIN_CHARS of text so it doesn't ship a bare "Okay,".
+_CHUNK_MIN_CHARS = 2
+_FIRST_CHUNK_MIN_CHARS = 25
+
+
+def _refresh_recall_async(conversation_id: str, transcript: str) -> None:
+    """Recall memory in the background and stash it for the next turn."""
+    def _run():
+        try:
+            _recall_cache[conversation_id] = mneme.recall(transcript)
+        except Exception as e:
+            logger.warning(f"[voice] background recall failed: {e}")
+
+    _recall_executor.submit(_run)
 
 
 def get_voice_stream() -> Any | None:
@@ -39,6 +70,53 @@ def _make_args_persistent(handler) -> None:
 
     handler.reset = persistent_reset
     handler._jarvis_persistent_args = True
+
+
+def _interrupt_on_speech_start(reply_on_pause_cls):
+    """Build a ReplyOnPause subclass that stops speaking as soon as you start.
+
+    Stock fastrtc only acts on a barge-in inside `if self.state.pause_detected`,
+    i.e. once the user has FINISHED their interrupting sentence and a further
+    near-silent chunk has gone by. While the assistant is mid-reply that reads
+    as "it keeps talking over me, then answers late".
+
+    `determine_pause` already flips `state.started_talking` on the first chunk
+    holding more than `started_talking_threshold` seconds of speech, and
+    `emit()` re-creates the state (`state.new()`) for every reply, so that flag
+    has a clean rising edge per turn. Cutting the reply on that edge stops the
+    assistant while the user is still talking, which is the behaviour people
+    expect. Deliberately NOT touched here: `state.stream`, which is accumulating
+    the barge-in utterance and is what the next generator gets fed.
+    """
+
+    class ReplyOnPauseInterruptOnSpeech(reply_on_pause_cls):
+        def receive(self, frame) -> None:
+            if self.state.responding and not self.can_interrupt:
+                return
+
+            was_talking = self.state.started_talking
+            self.process_audio(frame, self.state)
+
+            if (
+                self.can_interrupt
+                and self.state.responding
+                and self.state.started_talking
+                and not was_talking
+            ):
+                logger.debug("[voice] barge-in: user started talking, cutting reply")
+                self._close_generator()
+                self.generator = None
+                self.clear_queue()
+
+            if self.state.pause_detected:
+                self.event.set()
+                if self.can_interrupt and self.state.responding:
+                    self._close_generator()
+                    self.generator = None
+                if self.can_interrupt:
+                    self.clear_queue()
+
+    return ReplyOnPauseInterruptOnSpeech
 
 
 def bind_voice_conversation(webrtc_id: str, conversation_id: str) -> bool:
@@ -96,9 +174,15 @@ def create_voice_stream():
         return None
 
     stt_model = get_stt_model()
-    tts_model = get_tts_model()
     agent = get_agent()
     factory = get_session_factory()
+
+    # Pre-warm the TTS model at mount so the first utterance doesn't eat the
+    # cold-load cost (e.g. Kokoro takes ~30s to initialize) as dead silence.
+    # We deliberately do NOT keep this reference — handle_audio re-fetches via
+    # get_tts_model() each utterance so a voice change saved in the admin UI
+    # (which calls reset_tts_model()) still takes effect without a restart.
+    get_tts_model()
 
     def handle_audio(audio, conversation_id: str):
         """Called by ReplyOnPause when user stops speaking.
@@ -125,25 +209,77 @@ def create_voice_stream():
         finally:
             db.close()
 
-        # Stream agent response with sentence-level TTS
+        # Recall relevant long-term memory (Mneme) and prepend it as context for
+        # this turn. Best-effort: returns "" if memory is disabled or unavailable.
+        # Use memory recalled on the previous turn (instant) and refresh in the
+        # background — keeps the ~0.8s recall off the critical path.
+        mem_block = _recall_cache.get(conversation_id, "")
+        agent_input = f"{mem_block}\n\nUser: {transcript}" if mem_block else transcript
+        _refresh_recall_async(conversation_id, transcript)
+
+        # Fetch the TTS model fresh each utterance so voice/engine changes saved
+        # via the admin UI (which call reset_tts_model()) take effect without a
+        # restart. get_tts_model() returns the cached singleton, so this is cheap.
+        tts_model = get_tts_model()
+
+        # Stream agent response with sentence-level TTS.
+        #
+        # Each stream_tts_sync() call is an independent Piper utterance with its
+        # own prosody and leading/trailing padding, so every flush is an audible
+        # seam. Flushing on commas therefore turned "Okay, safe travels!" into
+        # three separate utterances — staccato. Flush on sentence ends only, with
+        # one exception: before any audio has gone out we also accept a clause
+        # break, so time-to-first-audio stays low on long replies.
         content_buffer = ""
         full_response = ""
+        spoke_yet = False
 
-        for event_type, data in agent.stream(transcript, thread_id=conversation_id):
-            if event_type == "chunk" and data:
-                content_buffer += data
-                full_response += data
+        def speak(text: str):
+            """Synthesize one buffer, skipping fragments with nothing to say.
 
-                if data and data[-1] in ".!?,;:":
-                    logger.debug(f"[voice] TTS: {content_buffer}")
-                    for audio_chunk in tts_model.stream_tts_sync(content_buffer):
-                        yield audio_chunk
-                    content_buffer = ""
+            Markdown is stripped first — the agent is shared with text chat and
+            emits `**bold**`, bullets and headings, which Piper reads out as
+            "asterisk asterisk". Only the spoken copy is stripped; `full_response`
+            keeps its markdown for the UI and the stored message."""
+            text = strip_markdown_for_speech(text)
+            if not any(ch.isalnum() for ch in text):
+                return
+            logger.debug(f"[voice] TTS: {text}")
+            yield from tts_model.stream_tts_sync(text)
 
-            elif event_type == "done":
-                if content_buffer.strip():
-                    for audio_chunk in tts_model.stream_tts_sync(content_buffer):
-                        yield audio_chunk
+        try:
+            for event_type, data in agent.stream(agent_input, thread_id=conversation_id):
+                if event_type == "chunk" and data:
+                    content_buffer += data
+                    full_response += data
+
+                    pending = content_buffer.strip()
+                    sentence_end = data[-1] in ".!?"
+                    early_clause = (
+                        not spoke_yet
+                        and data[-1] in ",;:"
+                        and len(pending) >= _FIRST_CHUNK_MIN_CHARS
+                    )
+                    if (sentence_end or early_clause) and len(pending) >= _CHUNK_MIN_CHARS:
+                        yield from speak(content_buffer)
+                        spoke_yet = True
+                        content_buffer = ""
+
+                elif event_type == "done":
+                    if content_buffer.strip():
+                        yield from speak(content_buffer)
+        except Exception as e:
+            # The LLM call failed (rate limit, network, etc.). Speak a short
+            # apology so the UI gets audio back and leaves "listening" instead
+            # of hanging silently, and log a concise reason (no full traceback).
+            logger.warning(f"[voice] agent failed; speaking fallback: {e}")
+            fallback = "Sorry, I ran into a problem reaching my brain just now. Please try again in a moment."
+            try:
+                for audio_chunk in tts_model.stream_tts_sync(fallback):
+                    yield audio_chunk
+            except Exception as tts_e:
+                logger.error(f"[voice] fallback TTS also failed: {tts_e}")
+            return
 
         # Save assistant message
         if full_response:
@@ -153,10 +289,49 @@ def create_voice_stream():
             finally:
                 db.close()
 
+        # Store this turn's user message in long-term memory (fire-and-forget).
+        # remember() runs a ~60s LLM ingest, so push it to a background thread
+        # rather than blocking this worker before the next utterance.
+        threading.Thread(target=mneme.remember, args=(transcript,), daemon=True).start()
+
         logger.debug(f"[voice] Response: {full_response[:100]}...")
 
+    # VAD tuning so fan/handling noise doesn't trigger phantom utterances or
+    # cut off the assistant mid-reply. All values come from config.voice.vad.
+    from fastrtc import SileroVadOptions
+    from fastrtc.reply_on_pause import AlgoOptions
+
+    vad = config.voice.vad
+    algo_options = AlgoOptions(
+        audio_chunk_duration=vad.audio_chunk_duration,
+        started_talking_threshold=vad.started_talking_threshold,
+        speech_threshold=vad.speech_threshold,
+    )
+    model_options = SileroVadOptions(
+        threshold=vad.threshold,
+        min_speech_duration_ms=vad.min_speech_duration_ms,
+        min_silence_duration_ms=vad.min_silence_duration_ms,
+        speech_pad_ms=vad.speech_pad_ms,
+    )
+    logger.info(
+        f"[voice] VAD: threshold={vad.threshold} "
+        f"min_speech_ms={vad.min_speech_duration_ms} "
+        f"min_silence_ms={vad.min_silence_duration_ms} "
+        # chunk_s and started_talking are the two that actually govern
+        # turn-end and barge-in sensitivity — log them or tuning is guesswork.
+        f"chunk_s={vad.audio_chunk_duration} "
+        f"started_talking={vad.started_talking_threshold} "
+        f"speech={vad.speech_threshold} "
+        f"can_interrupt={vad.can_interrupt}"
+    )
+
     stream = Stream(
-        ReplyOnPause(handle_audio),
+        _interrupt_on_speech_start(ReplyOnPause)(
+            handle_audio,
+            algo_options=algo_options,
+            model_options=model_options,
+            can_interrupt=vad.can_interrupt,
+        ),
         modality="audio",
         mode="send-receive",
         # fastrtc defaults to 1 — any not-yet-cleaned-up previous peer

@@ -1,95 +1,135 @@
 app:
-  name: "Jarvis"
-  host: "0.0.0.0"
+  name: Jarvis
+  theme: '#fecb3e'
+  host: 0.0.0.0
   port: 8000
   debug: false
   cors_origins:
-    - "http://localhost:3000"
-    - "http://localhost:3001"
-    - "http://localhost:5173"
-
+  - http://localhost:3000
+  - http://localhost:3001
+  - http://localhost:5173
 auth:
   enabled: false
-  jwt_secret_key: "change-me-in-production"
+  jwt_secret_key: change-me-in-production
   jwt_expiry_minutes: 1440
-  admin_username: "admin"
-  admin_password: "admin"
-
+  admin_username: admin
+  admin_password: admin
 llm:
-  provider: "groq"
-  system_prompt: "You are Jarvis, a helpful AI assistant. Be concise, accurate, and helpful, keep your responses short and to the point. If you don't know the answer, say you don't know."
+  provider: ollama
+  system_prompt: You are Jarvis, a helpful AI assistant. Be concise, accurate, and
+    helpful, keep your responses short and to the point. If you don't know the answer,
+    say you don't know.
   ollama:
-    model: "qwen2.5:3b"
-    base_url: "http://host.docker.internal:11434"
+    model: nemotron-3-nano:30b
+    base_url: https://ollama.com
     temperature: 0.7
+    reasoning: false
+    api_key: ''
   openai:
-    model: "gpt-4o"
-    api_key: "${OPENAI_API_KEY}"
+    model: gpt-4o
+    api_key: ${OPENAI_API_KEY}
     temperature: 0.7
+    reasoning: false
   anthropic:
-    model: "claude-sonnet-4-20250514"
-    api_key: "${ANTHROPIC_API_KEY}"
+    model: claude-sonnet-4-20250514
+    api_key: ${ANTHROPIC_API_KEY}
     temperature: 0.7
+    reasoning: false
   bedrock:
-    model_id: "anthropic.claude-3-sonnet-20240229-v1:0"
-    region: "us-east-1"
+    model_id: anthropic.claude-3-sonnet-20240229-v1:0
+    region: us-east-1
     temperature: 0.7
+    reasoning: false
   groq:
-    model: "llama-3.3-70b-versatile"
-    api_key: "${GROQ_API_KEY}"
+    model: llama-3.3-70b-versatile
+    api_key: ${GROQ_API_KEY}
     temperature: 0.7
-
+    reasoning: false
 rag:
   enabled: true
-  store: "chromadb"
-  embedding_model: "all-MiniLM-L6-v2"
+  store: chromadb
+  embedding_model: all-MiniLM-L6-v2
   chunk_size: 1000
   chunk_overlap: 200
   chromadb:
-    host: "chromadb"
+    host: chromadb
     port: 8000
   faiss:
-    index_path: "./data/faiss_index"
+    index_path: ./data/faiss_index
   opensearch:
-    host: "opensearch"
+    host: opensearch
     port: 9200
   pgvector:
-    connection_string: "postgresql://jarvis:jarvis@postgres:5432/jarvis"
-
+    connection_string: postgresql://jarvis:jarvis@postgres:5432/jarvis
 voice:
   enabled: true
-  stt_model: "faster-whisper"
-  tts_model: "groq"
+  stt_model: faster-whisper
+  tts_model: piper
   piper:
-    model_path: "./models/jarvis-high.onnx"
-    config_path: "./models/en.json"
+    model_path: ./models/jarvis-high.onnx
+    config_path: ./models/jarvis-high.onnx.json
   edge:
-    voice: "en-US-AriaNeural"
-    rate: "+0%"
-    pitch: "+0Hz"
+    voice: en-US-AriaNeural
+    rate: +0%
+    pitch: +0Hz
   kokoro:
-    voice: "am_michael"
-    speed: 1.0
-    lang: "en-us"
+    voice: af_sky
+    speed: 1.1
+    lang: en-us
   groq:
-    voice: "Calum-PlayAI"
-    model: "playai-tts"
-    base_url: "https://api.groq.com/openai/v1"
-    api_key_env: "GROQ_API_KEY"
+    voice: Calum-PlayAI
+    model: playai-tts
+    base_url: https://api.groq.com/openai/v1
+    api_key_env: GROQ_API_KEY
+  chattts:
+    device: cpu
+    compile: false
+    speaker_seed: 42
+    temperature: 0.3
+    top_p: 0.7
+    top_k: 20
+    sample_rate: 24000
+    refine_text_prompt: '[oral_2][laugh_0][break_4]'
+  emotion_tags:
+    enabled: false
+    allowed_tags:
+    - <laugh>
+    - <chuckle>
+    - <sigh>
+    - <gasp>
+    - <cough>
+    instruction_template: 'When it genuinely fits the emotional tone, you may sprinkle
+      at most one or two of these inline cues between sentences: {tags}. Place them
+      as standalone tokens, never inside a word. Skip them entirely if the reply is
+      short, factual, or neutral.'
   faster_whisper:
-    model_size: "small.en"
-    device: "cpu"
-    compute_type: "int8"
+    model_size: base.en
+    device: cpu
+    compute_type: int8
     beam_size: 1
     vad_filter: false
-    language: "en"
-
+    language: en
+  vad:
+    threshold: 0.5
+    min_speech_duration_ms: 250
+    min_silence_duration_ms: 1000
+    speech_pad_ms: 400
+    audio_chunk_duration: 1.0
+    started_talking_threshold: 0.4
+    speech_threshold: 0.1
+    can_interrupt: true
 tools:
   enabled:
-    - web_search
-    - datetime_tool
-    - calculator
-    - rag_search
-
+  - web_search
+  - datetime_tool
+  - calculator
+  - rag_search
 database:
-  url: "sqlite:///./data/jarvis.db"
+  url: sqlite:///./data/jarvis.db
+memory:
+  enabled: true
+  base_url: http://host.docker.internal:8000
+  api_key: ${MNEME_API_KEY}
+  user_id: jarvis
+  recall_limit: 3
+  recall_mode: vector

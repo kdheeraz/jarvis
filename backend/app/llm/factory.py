@@ -27,14 +27,25 @@ def create_llm(config: JarvisConfig | None = None) -> BaseChatModel:
 
 
 def _create_ollama(config: JarvisConfig) -> BaseChatModel:
+    import os
+
     from langchain_ollama import ChatOllama
 
     cfg = config.llm.ollama
+
+    # Hosted Ollama (e.g. https://ollama.com) requires a Bearer token; a local
+    # server does not. Send the header only when a key is configured.
+    client_kwargs = {}
+    api_key = cfg.api_key or os.environ.get("OLLAMA_API_KEY", "")
+    if api_key:
+        client_kwargs["headers"] = {"Authorization": f"Bearer {api_key}"}
+
     return ChatOllama(
         model=cfg.model,
         reasoning=cfg.reasoning,
         base_url=cfg.base_url,
         temperature=cfg.temperature,
+        client_kwargs=client_kwargs,
     )
 
 

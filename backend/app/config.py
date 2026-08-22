@@ -28,6 +28,10 @@ class OllamaConfig(BaseModel):
     base_url: str = "http://ollama:11434"
     temperature: float = 0.7
     reasoning: bool = False
+    # For hosted Ollama (e.g. https://ollama.com) that requires auth. Leave empty
+    # for a local/unauthenticated server. Falls back to the OLLAMA_API_KEY env var
+    # so the secret can stay out of the config file.
+    api_key: str = ""
 
 
 class OpenAIConfig(BaseModel):
@@ -159,6 +163,36 @@ class FasterWhisperConfig(BaseModel):
     language: str | None = "en"
 
 
+class VadConfig(BaseModel):
+    """Voice-activity-detection tuning for handheld-mic / noisy environments.
+
+    Defaults are hardened against steady background noise (e.g. a fan) and
+    accidental barge-in. Raise thresholds further if noise still triggers it;
+    lower them if it misses quiet speech."""
+    # Silero speech-probability cutoff. 0.5 is the library default; higher
+    # ignores low-level steady noise like fan hum. Range 0-1.
+    threshold: float = 0.5
+    # Sounds shorter than this aren't treated as speech — filters out mic
+    # handling bumps, clicks, and brief fan gusts.
+    min_speech_duration_ms: int = 250
+    # Silence (ms) after you stop talking before the turn is considered over.
+    min_silence_duration_ms: int = 2000
+    speech_pad_ms: int = 400
+    # Seconds of sustained speech before "user started talking" fires (fastrtc
+    # AlgoOptions). Higher = less twitchy on short noises.
+    started_talking_threshold: float = 0.2
+    speech_threshold: float = 0.1
+    # Seconds of audio fastrtc buffers before each pause-detection pass. This is
+    # the granularity of turn-end detection: a turn can only end on a chunk
+    # boundary, so the effective end-of-turn wait is min_silence_duration_ms
+    # rounded up to a multiple of this. Lower = snappier but more CPU.
+    audio_chunk_duration: float = 0.6
+    # When True, you can barge in and interrupt the assistant by speaking. The
+    # high `threshold` above keeps steady background noise from triggering it;
+    # set False if noise still cuts the assistant off mid-reply.
+    can_interrupt: bool = True
+
+
 class VoiceConfig(BaseModel):
     enabled: bool = True
     stt_model: str = "distil-whisper"
@@ -170,6 +204,7 @@ class VoiceConfig(BaseModel):
     chattts: ChatTTSConfig = ChatTTSConfig()
     emotion_tags: EmotionTagsConfig = EmotionTagsConfig()
     faster_whisper: FasterWhisperConfig = FasterWhisperConfig()
+    vad: VadConfig = VadConfig()
 
 
 class ToolsConfig(BaseModel):

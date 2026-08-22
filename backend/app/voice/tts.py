@@ -9,11 +9,20 @@ from app.config import get_config
 class PiperTTSModel:
     """Piper TTS wrapper that yields FastRTC-compatible audio tuples."""
 
+    # Piper emits one array per sentence, which can be several seconds of audio.
+    # fastrtc can only act on a barge-in at a yield point — that is where it
+    # raises GeneratorExit and drains the output queue — so handing it one huge
+    # array means seconds of speech keep playing after you interrupt, and audio
+    # already computed can land in the queue just after it was cleared. Slicing
+    # the array caps that overrun at one slice.
+    SLICE_MS = 40
+
     def __init__(self, model_path: str, config_path: str):
         from piper.voice import PiperVoice
 
         self.voice = PiperVoice.load(model_path, config_path)
         self.sample_rate = self.voice.config.sample_rate
+        self._slice_samples = max(1, int(self.sample_rate * self.SLICE_MS / 1000))
         logger.info(f"Piper TTS loaded: {model_path} (sample_rate={self.sample_rate})")
 
     def stream_tts_sync(self, text: str) -> Generator:
@@ -21,11 +30,34 @@ class PiperTTSModel:
         for chunk_obj in self.voice.synthesize(text):
             audio_bytes = chunk_obj.audio_int16_bytes
             audio_1d = np.frombuffer(audio_bytes, dtype=np.int16)
-            audio_2d = audio_1d.reshape(1, -1)
-            yield (self.sample_rate, audio_2d)
+            for start in range(0, audio_1d.size, self._slice_samples):
+                audio_2d = audio_1d[start : start + self._slice_samples].reshape(1, -1)
+                yield (self.sample_rate, audio_2d)
 
 
 _tts_model = None
+
+
+def reset_tts_model():
+    """Clear the cached TTS singleton so the next get_tts_model() rebuilds it
+    from current config. Call after a voice config change (engine, voice, speed).
+
+    The rebuild is pre-warmed on a background thread so the next utterance does
+    not eat the model's cold-load cost (Kokoro ~30s) as dead silence. Best-effort
+    — if warming fails, get_tts_model() will simply rebuild on demand."""
+    global _tts_model
+    _tts_model = None
+    logger.info("TTS model singleton reset; pre-warming new model in background")
+
+    import threading
+
+    def _warm():
+        try:
+            get_tts_model()
+        except Exception as e:
+            logger.warning(f"TTS pre-warm after reset failed: {e}")
+
+    threading.Thread(target=_warm, daemon=True).start()
 
 
 def get_tts_model():
